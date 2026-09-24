@@ -85,7 +85,7 @@ baseline completa:
 | Credencial CSPRNG 256 bits, só digest em estado | `generateAdminToken` + `state.json` 0600 | unit + B-5 |
 | Comparação em tempo constante | `timingSafeEqual` sobre sha256 (32 bytes fixos) | unit |
 | Teto de falhas NIST SP 800-63B-4 (100) | `AuthFailureTracker`; lockout responde o MESMO 401 | B-3 |
-| Nonce de confirmação (confused deputy/replay) | `NonceStore`: uso único, TTL 120 s, ligado a ação/alvo/origem | B-4 |
+| Nonce de confirmação (confused deputy/replay) | `NonceStore`: uso único, TTL 120 s, ligado a ação/alvo/origem (remoções **e** substituições) | B-4 |
 | Auditoria apensível | `audit.log` 0600, `O_NOFOLLOW`, modo verificado no descritor | unit |
 | CSRF | sem cookies (bearer em `sessionStorage`); `Origin` verificado; CSP estrita com nonce de script | B-1 |
 | DNS rebinding | allowlist de `Host` (`admin.allowedHosts`) | B-2 |

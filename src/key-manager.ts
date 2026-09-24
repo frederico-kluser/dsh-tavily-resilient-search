@@ -202,6 +202,28 @@ export class TavilyKeyManager {
     return this.keys.splice(index, 1)[0]
   }
 
+  /**
+   * SUBSTITUI a credencial do índice dado (edição via painel): a nova chave
+   * ocupa a mesma posição com estado fresco (é uma credencial nova) e a antiga
+   * é devolvida. Recusa duplicados face às restantes posições.
+   */
+  public replaceKeyByIndex(index: number, key: string, source: KeySource = 'ui'): KeyMetadata | undefined {
+    if (!Number.isInteger(index) || index < 0 || index >= this.keys.length) return undefined
+    const trimmed = key.trim()
+    if (trimmed.length === 0) return undefined
+    if (this.keys.some((k, i) => i !== index && k.key === trimmed)) return undefined
+    const old = this.keys[index]!
+    this.keys[index] = {
+      key: trimmed,
+      status: 'ACTIVE',
+      cooldownUntil: 0,
+      failureCount: 0,
+      totalRequests: 0,
+      source,
+    }
+    return old
+  }
+
   /** Acesso por índice (estável dentro da sessão). */
   public getByIndex(index: number): KeyMetadata | undefined {
     return this.keys[index]

@@ -52,28 +52,31 @@ legítimo documentado: "ainda não configurado".
 
 ## Gestão de chaves via interface
 
-Para além das variáveis de ambiente, o plugin serve um **painel de gestão do
-pool** no próprio webServer do DSH:
+O CRUD do pool vive em **dois sítios do layout do DSH**:
 
-```
-http://127.0.0.1:<porta-do-dsh>/__tavily-keys/
-```
+1. **Nativo, no layout**: secção **“Tavily Keys”** em **Definições (Settings)** —
+   contribuída para o slot `settings.section` pelo bundle de cliente
+   (`client/client.js`, formato `__ModuleLoader__` medido no exemplo oficial).
+   CRUD completo: **adicionar** (C), **listar** com estados (R), **editar/
+   substituir** (U) e **remover** (D), mais **Testar** (valida contra a API —
+   gasta 1 crédito). Estilizado com as variáveis de design `--dsw-alias-*` do
+   próprio DSH — fala o layout da casa.
+2. **Página autónoma** em `http://127.0.0.1:<porta-do-dsh>/__tavily-keys/`
+   (atalho 🔑 injetado na shell via `tapIndex`) — o mesmo CRUD, robusta a
+   reestruturações do host.
 
-(um atalho 🔑 *Tavily Keys* é injetado na shell SPA via `tapIndex`). O painel
-permite **adicionar** chaves (opcionalmente persistidas em `keys.json` 0600),
-**remover** (com nonce de confirmação), **testar** uma chave (envia uma pesquisa
-real — gasta 1 crédito) e ver o estado do pool em tempo real.
-
-- **Autenticação**: token administrativo gerado por CSPRNG no primeiro arranque e
-  mostrado **uma única vez** no registo do DSH (`logger 'tavily-pool'`); depois
-  só o digest fica em `state.json` (0600). Perdeu? Recarregue com
-  `DSH_TAVILY_ADMIN_RESET=1`. Também pode definir `DSH_TAVILY_ADMIN_TOKEN`.
+Ambas exigem o **token administrativo** (guardado só nessa aba:
+`sessionStorage`): gerado por CSPRNG no primeiro arranque e impresso **uma
+única vez** no registo do DSH (`logger 'tavily-pool'`); depois só o digest fica
+em `state.json` (0600). Perdeu? Recarregue com `DSH_TAVILY_ADMIN_RESET=1`.
+Também pode definir `DSH_TAVILY_ADMIN_TOKEN`.
 - **Fronteira**: origem (socket + `Origin`) → `Host` → credencial, por esta
   ordem fixa; denegações byte-idênticas (sem oráculo). Predefinição: só
   loopback (`admin.trustedRemotes` / `admin.allowedHosts`).
 - **Força bruta**: orçamento NIST SP 800-63B-4 (100 falhas → lockout com o
   mesmo 401).
-- **Ações destrutivas** (remoção) exigem nonce de confirmação, de uso único.
+- **Ações destrutivas** (remoção **e substituição/edição**) exigem nonce de
+  confirmação, de uso único.
 - **Auditoria**: `audit.log` apensível (0600, `O_NOFOLLOW`) com todas as
   decisões mutáveis e denegações.
 - Chaves removidas que vêm do **ambiente** regressam no próximo arranque (a

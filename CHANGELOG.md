@@ -4,6 +4,32 @@ Todas as alterações notáveis deste projeto. Formato inspirado em
 [Keep a Changelog](https://keepachangelog.com/pt-PT/1.1.0/); versionado segundo
 [SemVer](https://semver.org/lang/pt-PT/) — em `0.x`, um **minor** é breaking.
 
+## [0.1.2] — 2026-09-24
+
+### Adicionado
+
+- **CRUD completo no LAYOUT do DSH**: secção nativa **“Tavily Keys”** em
+  Definições (slot `settings.section`), contribuída pelo bundle de cliente
+  `client/client.js` no formato `window.__ModuleLoader__.load({ id, factory })`
+  medido no exemplo oficial (`dsh-client-ui-message-feedback@0.1.7-rc.1`), com
+  `exports.apply`/`exports.inject` e sem build step (`react.createElement`).
+  Estilo com as variáveis de design `--dsw-alias-*` do DSH.
+- **U do CRUD — editar/substituir credencial**: `PUT /api/keys/:index` com
+  `TavilyKeyManager.replaceKeyByIndex` (mesma posição, estado fresco,
+  devolução da antiga para auditoria) + nonce de confirmação `replace-key`
+  (uso único, ligado a ação/alvo/origem) e rollback quando a auditoria falha
+  (fail-closed). Botão “Editar” também na página autónoma.
+- Manifesto `dsh.client` (`platform: web`) + export `./client` com
+  `client/client.d.ts`; `check-tarball` exige o bundle no tarball.
+- Contract tests do bundle: formato `__ModuleLoader__`, allowlist de `require`
+  (módulos especiais do host), identidade de nav (`id`/`order`/`label`) e
+  **smoke de renderização em `node:vm`** que prova a árvore real (uma
+  `createElement` escrita à mão com parênteses tortos falha aqui, não em
+  produção).
+- Espelho `types/dsh-client-ui-settings-slots.d.ts` (contrato verbatim do slot
+  `settings.section`, sha256 registado) travado por contract test e
+  reverificação de rede.
+
 ## [0.1.1] — 2026-09-24
 
 ### Adicionado

@@ -54,6 +54,12 @@ const blockCordisAugGeneric = (lines) => {
   const s = findLine(lines, /^declare module '@deepseek-ai\/cordis' \{/)
   return [...lines.slice(s, s + 3), '    }']
 }
+const blockSettingsSection = (lines) => {
+  let s = findLine(lines, /One settings page per list entry/)
+  while (!lines[s].trim().startsWith('/**')) s -= 1
+  const e = findLine(lines, /^ {8}\};$/, s)
+  return lines.slice(s, e + 1)
+}
 
 const PLAN = {
   'dsh-tools-schema.d.ts': {
@@ -99,6 +105,11 @@ const PLAN = {
       ['WebServer-class-surface', blockIface(l, /^export declare class WebServer extends Service \{/)],
       ['Context-augmentation-webServer', blockCordisAugGeneric(l)],
     ],
+  },
+  'dsh-client-ui-settings-slots.d.ts': {
+    pkg: '@deepseek-ai/dsh-client-ui-settings',
+    inner: 'lib/types/client/contract/slots.d.ts',
+    blocks: (l) => [['settings.section-slot', blockSettingsSection(l)]],
   },
 }
 

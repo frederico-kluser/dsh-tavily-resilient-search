@@ -120,6 +120,17 @@ export function renderPage(options: PageRenderOptions): string {
         say(t.ok ? ('teste: ' + (t.data.message || t.data.outcome)) : ('teste falhou: ' + t.status));
         refresh();
       };
+      var bEdit = document.createElement('button');
+      bEdit.textContent = 'Editar';
+      bEdit.onclick = async function () {
+        var nova = prompt('Nova chave para ' + k.ref + ' (substitui a credencial):');
+        if (!nova) return;
+        var c = await call('POST', '/api/confirm', { action: 'replace-key', target: String(k.index) });
+        if (!c.ok || !c.data.nonce) { say('confirmação recusada'); return; }
+        var r = await call('PUT', '/api/keys/' + k.index, { key: nova.trim() }, c.data.nonce);
+        say(r.ok ? ('chave substituída (' + r.data.ref + ')') : ('substituição recusada: ' + (r.data.error || r.status)));
+        refresh();
+      };
       var bDel = document.createElement('button');
       bDel.textContent = 'Remover';
       bDel.onclick = async function () {
@@ -130,7 +141,7 @@ export function renderPage(options: PageRenderOptions): string {
         say(d.ok ? 'chave removida' : ('remoção recusada: ' + d.status));
         refresh();
       };
-      td.appendChild(bTest); td.appendChild(bDel);
+      td.appendChild(bTest); td.appendChild(bEdit); td.appendChild(bDel);
       tr.appendChild(td);
       tbody.appendChild(tr);
     });

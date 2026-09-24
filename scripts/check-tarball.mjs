@@ -22,6 +22,8 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const REQUIRED = [
   'package/dist/index.js',
   'package/dist/index.d.ts',
+  'package/client/client.js',
+  'package/client/client.d.ts',
   'package/cordis.patch.yml',
   'package/README.md',
   'package/LICENSE',

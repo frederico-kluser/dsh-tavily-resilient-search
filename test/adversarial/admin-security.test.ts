@@ -187,6 +187,20 @@ describe('B-4 — nonce de confirmação em ações destrutivas', () => {
     assert.equal(withoutNonce.status, 428)
     assert.equal(h.keyManager.size, size, 'nada foi removido sem confirmação válida')
   })
+
+  it('o nonce de substituição está ligado ao alvo — alvo errado não substitui', async () => {
+    const before = h.keyManager.getByIndex(0)!.key
+    const confirm = await call('POST', '/__tavily-keys/api/confirm', {
+      body: { action: 'replace-key', target: '5' },
+    })
+    const nonce = (JSON.parse(confirm.text) as { nonce: string }).nonce
+    const wrongTarget = await call('PUT', '/__tavily-keys/api/keys/0', {
+      headers: { 'x-confirm-nonce': nonce },
+      body: { key: 'tvly-ADVREPLACE-9999999999999999' },
+    })
+    assert.equal(wrongTarget.status, 428, 'nonce para outro alvo é inútil')
+    assert.equal(h.keyManager.getByIndex(0)!.key, before, 'credencial intacta')
+  })
 })
 
 describe('B-5 — canário de segredos por valor', () => {

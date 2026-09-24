@@ -33,6 +33,30 @@ describe('TavilyKeyManager — gestão do pool via painel', () => {
     assert.equal(manager.removeKeyByIndex(1.5), undefined)
   })
 
+  it('replaceKeyByIndex substitui mantendo a posição, com estado fresco', () => {
+    const manager = new TavilyKeyManager([K1, K2], { allowEmpty: true })
+    manager.markRevoked(K1)
+    const K3 = 'tvly-THIRDKEY-cccccccccc3333'
+    const old = manager.replaceKeyByIndex(0, `  ${K3}  `, 'ui')
+    assert.equal(old!.key, K1)
+    assert.equal(old!.status, 'REVOKED', 'devolve o estado antigo para auditoria')
+    assert.equal(manager.size, 2)
+    assert.equal(manager.getByIndex(0)!.key, K3, 'mesma posição')
+    assert.equal(manager.getByIndex(0)!.status, 'ACTIVE', 'credencial nova = estado fresco')
+    assert.equal(manager.getByIndex(0)!.source, 'ui')
+    assert.equal(manager.getByIndex(1)!.key, K2, 'restantes posições intactas')
+  })
+
+  it('replaceKeyByIndex recusa duplicados, vazios e índices inválidos', () => {
+    const manager = new TavilyKeyManager([K1, K2], { allowEmpty: true })
+    assert.equal(manager.replaceKeyByIndex(0, K2), undefined, 'duplicado de outra posição')
+    assert.equal(manager.getByIndex(0)!.key, K1, 'nada mudou')
+    assert.equal(manager.replaceKeyByIndex(0, '   '), undefined)
+    assert.equal(manager.replaceKeyByIndex(9, K1), undefined)
+    assert.equal(manager.replaceKeyByIndex(-1, K1), undefined)
+    assert.equal(manager.replaceKeyByIndex(1.5, K1), undefined)
+  })
+
   it('snapshot é MASCARADO — nunca material de segredo, nem prefixo', () => {
     const manager = new TavilyKeyManager([K1], { allowEmpty: true })
     manager.addKey(K2, 'ui')

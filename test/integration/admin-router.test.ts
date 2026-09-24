@@ -217,3 +217,39 @@ describe('painel — gestão do pool', () => {
     assert.equal((await call('DELETE', '/__tavily-keys/api/keys/99')).status, 404)
   })
 })
+
+describe('painel — substituição de credencial (U do CRUD)', () => {
+  const K3 = 'tvly-INTKEYTHR-cccccccccc3333'
+  const K4 = 'tvly-INTKEYFOU-ddddddddddd4444'
+
+  it('PUT exige nonce, substitui mantendo a posição e persiste a nova', async () => {
+    const size = h.keyManager.size
+    const before = h.keyManager.getByIndex(0)!.key
+
+    const denied = await call('PUT', '/__tavily-keys/api/keys/0', { body: { key: K3 } })
+    assert.equal(denied.status, 428)
+    assert.equal(h.keyManager.getByIndex(0)!.key, before, 'sem nonce nada muda')
+
+    const confirm = await call('POST', '/__tavily-keys/api/confirm', {
+      body: { action: 'replace-key', target: '0' },
+    })
+    const nonce = (confirm.json as { nonce: string }).nonce
+    const ok = await call('PUT', '/__tavily-keys/api/keys/0', { body: { key: K3, persist: true }, headers: { 'x-confirm-nonce': nonce } })
+    assert.equal(ok.status, 200)
+    assert.equal(h.keyManager.size, size, 'posição substituída, não acrescentada')
+    assert.equal(h.keyManager.getByIndex(0)!.key, K3)
+    assert.equal(h.keyManager.getByIndex(0)!.status, 'ACTIVE', 'credencial nova = estado fresco')
+    assert.deepEqual(loadPersistedKeys(h.paths), [K3])
+  })
+
+  it('PUT recusa duplicados de outras posições', async () => {
+    await call('POST', '/__tavily-keys/api/keys', { body: { key: K4, persist: false } })
+    const confirm = await call('POST', '/__tavily-keys/api/confirm', {
+      body: { action: 'replace-key', target: '0' },
+    })
+    const nonce = (confirm.json as { nonce: string }).nonce
+    const dup = await call('PUT', '/__tavily-keys/api/keys/0', { body: { key: K4 }, headers: { 'x-confirm-nonce': nonce } })
+    assert.equal(dup.status, 409)
+    assert.equal(h.keyManager.getByIndex(0)!.key, K3, 'nada mudou')
+  })
+})

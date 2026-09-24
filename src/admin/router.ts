@@ -282,6 +282,56 @@ export function createAdminRouter(deps: AdminRouterDeps) {
     })
   }
 
+  async function handleReplaceKey(req: IncomingMessage, res: ServerResponse, remote: string, indexText: string): Promise<void> {
+    const index = Number.parseInt(indexText, 10)
+    const target = String(index)
+    const nonce = headerValue(req, 'x-confirm-nonce') ?? undefined
+    const current = Number.isInteger(index) ? keyManager.getByIndex(index) : undefined
+    if (!current) {
+      sendJson(res, 404, { error: 'credencial inexistente' })
+      return
+    }
+    if (!nonces.consume(nonce, 'replace-key', target, remote)) {
+      audit({ action: 'replace-key', outcome: 'deny', remote, target, detail: 'missing-or-stale-nonce' })
+      sendJson(res, 428, { error: 'confirmação necessária — obtenha um nonce em POST /api/confirm' })
+      return
+    }
+    let body: Record<string, unknown>
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      sendJson(res, 400, { error: 'corpo inválido' })
+      return
+    }
+    const key = typeof body['key'] === 'string' ? body['key'].trim() : ''
+    const persist = body['persist'] !== false
+    if (!isValidKeyCandidate(key)) {
+      audit({ action: 'replace-key', outcome: 'deny', remote, target, detail: 'invalid-format' })
+      sendJson(res, 400, { error: 'formato de chave inválido' })
+      return
+    }
+    const old = keyManager.replaceKeyByIndex(index, key, 'ui')
+    if (!old) {
+      audit({ action: 'replace-key', outcome: 'deny', remote, target, detail: 'duplicate-or-invalid' })
+      sendJson(res, 409, { error: 'chave já existente no pool' })
+      return
+    }
+    const wasPersisted = persistedKeys.delete(old.key)
+    if (persist) persistedKeys.add(key)
+    if (wasPersisted || persist) savePersistedKeys(deps.paths, [...persistedKeys])
+    const ref = maskKey(key)
+    if (!audit({ action: 'replace-key', outcome: 'permit', remote, target: ref, detail: `replaced=${maskKey(old.key)}` })) {
+      // fail-closed: auditoria em falta reverte a substituição
+      keyManager.replaceKeyByIndex(index, old.key, old.source)
+      persistedKeys.delete(key)
+      if (wasPersisted) persistedKeys.add(old.key)
+      savePersistedKeys(deps.paths, [...persistedKeys])
+      sendJson(res, 500, { error: 'auditoria indisponível — operação revertida' })
+      return
+    }
+    sendJson(res, 200, { ok: true, ref, persisted: persist, message: `chave ${ref} substituída` })
+  }
+
   async function handleConfirm(req: IncomingMessage, res: ServerResponse, remote: string): Promise<void> {
     let body: Record<string, unknown>
     try {
@@ -292,12 +342,12 @@ export function createAdminRouter(deps: AdminRouterDeps) {
     }
     const action = body['action']
     const target = body['target']
-    if (action !== 'remove-key' || typeof target !== 'string') {
+    if ((action !== 'remove-key' && action !== 'replace-key') || typeof target !== 'string') {
       sendJson(res, 400, { error: 'ação de confirmação desconhecida' })
       return
     }
-    const nonce = nonces.issue('remove-key', target, remote)
-    if (!audit({ action: 'confirm', outcome: 'permit', remote, target })) {
+    const nonce = nonces.issue(action, target, remote)
+    if (!audit({ action: 'confirm', outcome: 'permit', remote, target: `${action}:${target}` })) {
       sendJson(res, 500, { error: 'auditoria indisponível' })
       return
     }
@@ -400,6 +450,10 @@ export function createAdminRouter(deps: AdminRouterDeps) {
       const keyMatch = pathname.match(/^\/api\/keys\/([0-9]+)(\/test)?$/)
       if (keyMatch && method === 'DELETE' && !keyMatch[2]) {
         await handleRemoveKey(req, res, remote, keyMatch[1]!)
+        return
+      }
+      if (keyMatch && method === 'PUT' && !keyMatch[2]) {
+        await handleReplaceKey(req, res, remote, keyMatch[1]!)
         return
       }
       if (keyMatch && keyMatch[2] === '/test' && method === 'POST') {

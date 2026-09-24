@@ -21,4 +21,21 @@ export default tseslint.config(
       globals: { console: 'readonly', process: 'readonly', Buffer: 'readonly' },
     },
   },
+  {
+    // client/client.js é o bundle de BROWSER (factory __ModuleLoader__)
+    files: ['client/**/*.js'],
+    languageOptions: {
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        sessionStorage: 'readonly',
+        fetch: 'readonly',
+        confirm: 'readonly',
+        prompt: 'readonly',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^(module|exports)$' }],
+    },
+  },
 )
