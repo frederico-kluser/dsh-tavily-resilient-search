@@ -28,4 +28,4 @@ jobs:
         run: |
           pnpm run check:tarball
           pnpm exec publint
-          pnpm exec attw --pack .
+          pnpm exec attw --pack . --profile esm-only

@@ -28,7 +28,7 @@ jobs:
         run: |
           pnpm run gate
           pnpm exec publint
-          pnpm exec attw --pack .
+          pnpm exec attw --pack . --profile esm-only
       - name: publish (OIDC provenance, idempotente)
         run: |
           VERSION=$(node -p "require('./package.json').version")

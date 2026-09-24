@@ -54,7 +54,7 @@
     "check:tarball": "node scripts/check-tarball.mjs",
     "check:upstream": "node scripts/verify-upstream.mjs",
     "gate": "pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test && pnpm run check:tarball",
-    "prepublishOnly": "pnpm run gate && publint && attw --pack ."
+    "prepublishOnly": "pnpm run gate && publint && attw --pack . --profile esm-only"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
