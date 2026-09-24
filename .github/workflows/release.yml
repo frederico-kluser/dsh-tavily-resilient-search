@@ -42,20 +42,25 @@ jobs:
       - name: publish (OIDC provenance, idempotente)
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          # Consulta NÃO autenticada de propósito (o .npmrc do setup-node traz
-          # _authToken vazio sem NODE_AUTH_TOKEN) e com cache-buster + retry:
-          # logo após um publish local o packument do CDN pode ainda não refletir
-          # a versão, e um "ausente" prematuro cairia num publish sem autenticação.
+          # Existência consultada pelo documento DA VERSÃO (menos cacheado que o
+          # packument) e com cache-buster: logo após um publish local o packument
+          # do CDN pode ainda não refletir a versão, e um "ausente" prematuro
+          # cairia num publish sem autenticação.
+          version_exists() {
+            node -e "fetch('https://registry.npmjs.org/dsh-tavily-resilient-search/${VERSION}?t='+Date.now()).then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"
+          }
           seen=0
-          for i in 1 2 3 4 5 6; do
-            if node -e "fetch('https://registry.npmjs.org/dsh-tavily-resilient-search?t='+Date.now()).then(r=>r.json()).then(d=>process.exit(d.versions&&d.versions['${VERSION}']?0:1)).catch(()=>process.exit(1))"; then
-              seen=1
-              break
-            fi
+          for i in 1 2 3 4 5 6 7 8; do
+            if version_exists; then seen=1; break; fi
             sleep 10
           done
           if [ "$seen" = "1" ]; then
             echo "v${VERSION} já publicada no npm — publish ignorado."
+          elif pnpm publish --access public --provenance --no-git-checks; then
+            echo "v${VERSION} publicada via OIDC."
+          elif version_exists; then
+            echo "v${VERSION} publicada entretanto por outro caminho — ignorado."
           else
-            pnpm publish --access public --provenance --no-git-checks
+            echo "publish falhou e v${VERSION} não existe no npm." >&2
+            exit 1
           fi
