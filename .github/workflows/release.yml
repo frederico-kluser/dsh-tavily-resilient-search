@@ -3,7 +3,8 @@ name: Release
 # Publica no npm com proveniência OIDC (trusted publishing). Pré-requisito
 # único, no console do npm: associar este repositório como trusted publisher de
 # `dsh-tavily-resilient-search`. Sem isso, o passo de publish falha alto — de
-# propósito (nunca token em secrets).
+# propósito (nunca token em secrets). O GitHub Release é criado a partir de um
+# gate VERDE e de forma independente do publish.
 on:
   push:
     tags: ['v*']
@@ -29,15 +30,23 @@ jobs:
           pnpm run gate
           pnpm exec publint
           pnpm exec attw --pack . --profile esm-only
+      - name: GitHub Release (idempotente, após gate verde)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "release ${GITHUB_REF_NAME} já existe — ignorado."
+          else
+            gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file CHANGELOG.md
+          fi
       - name: publish (OIDC provenance, idempotente)
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          if npm view "dsh-tavily-resilient-search@${VERSION}" version >/dev/null 2>&1; then
+          # Consulta NÃO autenticada de propósito: o .npmrc do setup-node traz
+          # _authToken vazio quando não há NODE_AUTH_TOKEN e um `npm view`
+          # autenticado-falhado cairia no publish sem necessidade.
+          if node -e "fetch('https://registry.npmjs.org/dsh-tavily-resilient-search').then(r=>r.json()).then(d=>process.exit(d.versions&&d.versions['${VERSION}']?0:1)).catch(()=>process.exit(1))"; then
             echo "v${VERSION} já publicada no npm — publish ignorado."
           else
             pnpm publish --access public --provenance --no-git-checks
           fi
-      - name: GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file CHANGELOG.md
