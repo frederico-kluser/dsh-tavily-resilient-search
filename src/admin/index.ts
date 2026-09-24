@@ -21,6 +21,7 @@ import {
   loadTokenDigest,
   resolveStorePaths,
   saveTokenDigest,
+  saveTokenFile,
 } from './store.js'
 
 export interface AdminInstallDeps {
@@ -29,20 +30,6 @@ export interface AdminInstallDeps {
   fetchFn: typeof fetch
   logger: LoggerLike
   now: () => number
-}
-
-const WIDGET_MARK = 'id="dsh-tavily-keys-widget"'
-
-/** Chrome mínimo injetado na shell SPA via `tapIndex` (L3), idempotente. */
-export function tapKeysWidget(html: string): string {
-  if (html.includes(WIDGET_MARK)) return html
-  const widget =
-    `<a id="dsh-tavily-keys-widget" href="${ADMIN_BASE_PATH}/" ` +
-    `style="position:fixed;right:16px;bottom:16px;z-index:2147483000;padding:8px 12px;` +
-    `border:1px solid #8884;border-radius:10px;background:#222c;color:#eee;text-decoration:none;` +
-    `font:13px system-ui,sans-serif" title="Gestão de chaves Tavily">🔑 Tavily Keys</a>`
-  const pos = html.lastIndexOf('</body>')
-  return pos === -1 ? `${html}${widget}` : `${html.slice(0, pos)}${widget}${html.slice(pos)}`
 }
 
 /** Decisão de exposição do painel: bind não-loopback só com opt-out explícito. */
@@ -73,10 +60,12 @@ export function installAdminPanel(ctx: Context, deps: AdminInstallDeps): void {
       const token = generateAdminToken()
       expectedDigest = digestToken(token)
       saveTokenDigest(paths, expectedDigest)
+      // Recuperação local (0600): ver `saveTokenFile` — o log não é o único caminho.
+      if (config.admin.storeTokenFile) saveTokenFile(paths, token)
       logger.info(
         `[dsh-tavily-resilient-search] TOKEN ADMINISTRATIVO do painel de chaves (mostrado UMA única vez):\n\n    ${token}\n\n` +
-          `Guarde-o agora. Perder-lo obriga a recarregar com DSH_TAVILY_ADMIN_RESET=1. ` +
-          `Painel: ${ADMIN_BASE_PATH}/`,
+          `Guardado também em ${config.admin.storeTokenFile ? paths.tokenFile : '(recuperação desligada)'}. ` +
+          `Regenerar: DSH_TAVILY_ADMIN_RESET=1. Gestão: Definições → Tavily Keys.`,
       )
     } else {
       expectedDigest = stored
@@ -136,8 +125,6 @@ export function installAdminPanel(ctx: Context, deps: AdminInstallDeps): void {
           },
         }),
       )
-
-      uiCtx.effect(() => webServer.tapIndex(tapKeysWidget))
 
       logger.info(
         `[dsh-tavily-resilient-search] painel de gestão de chaves em ${ADMIN_BASE_PATH}/ ` +

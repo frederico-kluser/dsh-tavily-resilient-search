@@ -128,14 +128,20 @@ after(async () => {
 })
 
 describe('painel — página e autenticação', () => {
-  it('a página carrega com CSP estrita e nonce de script por resposta', async () => {
-    const res = await call('GET', `${ADMIN_BASE_PATH}/`, { token: null })
-    assert.equal(res.status, 200)
-    assert.match(res.text, /Gestão de chaves Tavily/)
-    const csp = res.headers.get('content-security-policy') ?? ''
-    assert.match(csp, /script-src 'nonce-[0-9a-f]{32}'/)
-    assert.match(csp, /default-src 'none'/)
-    assert.match(csp, /frame-ancestors 'none'/)
+  it('a página autónoma foi retirada (410) — a gestão vive em Definições', async () => {
+    const page = await call('GET', `${ADMIN_BASE_PATH}/`, { token: null })
+    assert.equal(page.status, 410)
+    assert.match(page.text, /Definições/)
+  })
+
+  it('/api/health é público e mínimo (sem segredos), para a visibilidade do botão', async () => {
+    const health = await call('GET', '/__tavily-keys/api/health', { token: null })
+    assert.equal(health.status, 200)
+    const data = health.json as { hasValidKey: boolean; totalKeys: number; needsSetup: boolean }
+    assert.deepEqual(Object.keys(data).sort(), ['hasValidKey', 'needsSetup', 'totalKeys'])
+    assert.equal(data.hasValidKey, true, 'o pool inicial tem K1')
+    assert.equal(data.needsSetup, false)
+    assert.ok(!health.text.includes(K1) && !health.text.includes(K2), 'sem material de chave')
   })
 
   it('sem credencial: 401 com corpo byte-idêntico ao de token errado', async () => {

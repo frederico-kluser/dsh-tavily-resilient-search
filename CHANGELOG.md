@@ -4,6 +4,43 @@ Todas as alterações notáveis deste projeto. Formato inspirado em
 [Keep a Changelog](https://keepachangelog.com/pt-PT/1.1.0/); versionado segundo
 [SemVer](https://semver.org/lang/pt-PT/) — em `0.x`, um **minor** é breaking.
 
+## [0.1.3] — 2026-09-24
+
+### Corrigido (feedback da utilização real)
+
+- **Página autónoma RETIRADA** (responde `410`): toda a edição de chaves vive em
+  **Definições → Tavily Keys** — sem ecrã paralelo.
+- **Botão “🔑 Tavily Keys” só quando não existe chave válida** (regra pedida):
+  contribuído no slot `settings.launcher` (recebe `openSettings()` do próprio
+  shell — mecanismo medido no contrato de slots) e com fallback DOM quando a
+  composição não tem launcher; desaparece assim que existe credencial utilizável
+  (`GET /api/health` público e mínimo decide a visibilidade).
+- **Feedback em todas as ações do painel**: spinner durante o pedido, `✓`/`⚠`
+  imediatos em cada clique (Ligar, Adicionar, Editar, Remover, Testar), botões
+  desativados enquanto em voo e mensagens de erro com o caminho de recuperação.
+- **Enter para adicionar/guardar** e `Esc` para cancelar a edição — sem
+  depender do rato.
+- **Layout das credenciais** refeito em cartões (ref + estado + cooldown +
+  origem/pedidos + ações) em vez de tabela espremida.
+- **Portão de autenticação explicado**: onde está o token
+  (`~/.dsh/dsh-tavily-resilient-search/admin-token.txt` ou log do arranque),
+  comando de regeneração (`DSH_TAVILY_ADMIN_RESET=1`) e opção “lembrar neste
+  browser”.
+- **URLs no painel**: app.tavily.com (obter chaves), documentação e “onde está o
+  token”.
+
+### Adicionado
+
+- `admin-token.txt` (0600) — ficheiro de recuperação do token administrativo +
+  `admin.storeTokenFile` (predefinição `true`; desvio documentado face à regra
+  “só digest” em docs/seguranca.md — o log como único caminho tornava o painel
+  inutilizável).
+- `GET /api/health` (sem autenticação, dentro da fronteira): apenas
+  `{ hasValidKey, needsSetup, totalKeys }` — decide a visibilidade do botão sem
+  vazar segredos.
+- Teste de renderização com mini-renderer de estado: prova a regra
+  “botão só sem chave válida”, o portão e o CRUD na árvore real do bundle.
+
 ## [0.1.2] — 2026-09-24
 
 ### Adicionado

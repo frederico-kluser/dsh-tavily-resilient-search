@@ -19,7 +19,7 @@ import { join } from 'node:path'
 import { after, before, describe, it } from 'node:test'
 import type { Context } from '@deepseek-ai/cordis'
 import { AuthFailureTracker, NonceStore, digestToken } from '../../src/admin/auth.js'
-import { bindIsSafe, installAdminPanel, tapKeysWidget } from '../../src/admin/index.js'
+import { bindIsSafe, installAdminPanel } from '../../src/admin/index.js'
 import { ADMIN_BASE_PATH, FORBIDDEN_BODY, UNAUTHORIZED_BODY, createAdminRouter } from '../../src/admin/router.js'
 import { appendAudit, ensureStore, resolveStorePaths, saveTokenDigest, sha256Hex } from '../../src/admin/store.js'
 import { assertValidConfig } from '../../src/config.js'
@@ -133,8 +133,8 @@ describe('B-1/B-2 — fronteira: origem e Host com denegações byte-idênticas'
       assert.equal(res.status, 403)
       assert.equal(res.text, FORBIDDEN_BODY, 'denegações têm de ser byte-idênticas')
     }
-    // a página legítima continua a funcionar
-    assert.equal((await call('GET', `${ADMIN_BASE_PATH}/`, { token: null })).status, 200)
+    // a página legítima continua a responder (410: gestão em Definições)
+    assert.equal((await call('GET', `${ADMIN_BASE_PATH}/`, { token: null })).status, 410)
   })
 
   it('fora de trustedRemotes: recusa ANTES de qualquer credencial (403, sem oráculo)', async () => {
@@ -264,15 +264,20 @@ describe('B-6 — bind público: o painel recusa-se a montar (fail-closed)', () 
   })
 })
 
-describe('B-7 — chrome tapIndex é idempotente e não carrega segredos', () => {
-  it('injeta uma vez, sem duplicar, e nunca segredos', () => {
-    const html = '<html><body></body></html>'
-    const once = tapKeysWidget(html)
-    const twice = tapKeysWidget(once)
-    assert.equal(twice, once, 'idempotente')
-    assert.equal(once.match(/dsh-tavily-keys-widget/g)!.length, 1)
-    assert.ok(once.includes(`${ADMIN_BASE_PATH}/`))
-    assert.ok(!once.includes(CANARY_TOKEN) && !once.includes(CANARY_KEY))
+describe('B-7 — saúde pública mínima e página retirada', () => {
+  it('/api/health vaza apenas o essencial (booleans), nunca segredos', async () => {
+    const res = await call('GET', '/__tavily-keys/api/health', { token: null })
+    assert.equal(res.status, 200)
+    const data = JSON.parse(res.text) as Record<string, unknown>
+    assert.deepEqual(Object.keys(data).sort(), ['hasValidKey', 'needsSetup', 'totalKeys'])
+    assert.equal(typeof data['hasValidKey'], 'boolean')
+    assert.ok(!res.text.includes(CANARY_KEY) && !res.text.includes(CANARY_TOKEN) && !res.text.includes(CANARY_KEY.slice(0, 8)))
+  })
+
+  it('a página autónoma está retirada (410) — a edição é toda em Definições', async () => {
+    const res = await call('GET', `${ADMIN_BASE_PATH}/`, { token: null })
+    assert.equal(res.status, 410)
+    assert.match(res.text, /Definições/)
   })
 })
 

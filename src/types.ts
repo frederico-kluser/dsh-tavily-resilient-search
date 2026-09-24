@@ -87,6 +87,11 @@ export interface AdminConfig {
   stateDir?: string
   /** Opt-out explícito da recusa de bind não-loopback (fail-closed por omissão). */
   allowPublicBind?: boolean
+  /**
+   * Guardar o token administrativo em `admin-token.txt` (0600) para recuperação
+   * local. Predefinição: true (documentado em docs/seguranca.md).
+   */
+  storeTokenFile?: boolean
 }
 
 /** AdminConfig totalmente materializada. */
@@ -96,6 +101,7 @@ export interface ResolvedAdminConfig {
   allowedHosts: string[]
   stateDir: string | null
   allowPublicBind: boolean
+  storeTokenFile: boolean
 }
 
 /** Configuração declarativa do plugin (camadas Bundle < Profile < Home < CLI overlay). */

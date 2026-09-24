@@ -115,6 +115,7 @@ function assertAdminConfig(value: unknown): ResolvedAdminConfig {
       allowedHosts: [...DEFAULT_ALLOWED_HOSTS],
       stateDir: null,
       allowPublicBind: false,
+      storeTokenFile: true,
     }
   }
   if (typeof value !== 'object') fail(`'admin' deve ser um objeto`)
@@ -124,6 +125,9 @@ function assertAdminConfig(value: unknown): ResolvedAdminConfig {
   }
   if (admin.allowPublicBind !== undefined && typeof admin.allowPublicBind !== 'boolean') {
     fail(`'admin.allowPublicBind' deve ser booleano`)
+  }
+  if (admin.storeTokenFile !== undefined && typeof admin.storeTokenFile !== 'boolean') {
+    fail(`'admin.storeTokenFile' deve ser booleano`)
   }
   if (admin.stateDir !== undefined && (typeof admin.stateDir !== 'string' || admin.stateDir.trim().length === 0)) {
     fail(`'admin.stateDir' deve ser uma string não vazia`)
@@ -136,6 +140,7 @@ function assertAdminConfig(value: unknown): ResolvedAdminConfig {
       admin.allowedHosts === undefined ? [...DEFAULT_ALLOWED_HOSTS] : assertStringList(admin.allowedHosts, 'admin.allowedHosts'),
     stateDir: admin.stateDir?.trim() ?? null,
     allowPublicBind: admin.allowPublicBind ?? false,
+    storeTokenFile: admin.storeTokenFile ?? true,
   }
 }
 

@@ -30,6 +30,8 @@ export default tseslint.config(
         document: 'readonly',
         sessionStorage: 'readonly',
         fetch: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         confirm: 'readonly',
         prompt: 'readonly',
       },

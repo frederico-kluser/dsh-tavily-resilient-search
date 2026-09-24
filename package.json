@@ -1,6 +1,6 @@
 {
   "name": "dsh-tavily-resilient-search",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Pesquisa web em tempo real para o DeepSeek Harness via API Tavily, com rotação atómica e resiliente de um agrupamento de chaves (rate limit 429, cota mensal 432/433, revogação 401) e contingência keyless — sem nunca interromper o agent loop.",
   "type": "module",
   "main": "./dist/index.js",

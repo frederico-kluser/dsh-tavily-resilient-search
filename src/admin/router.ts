@@ -10,14 +10,12 @@
  *  - ações destrutivas exigem nonce de confirmação (uso único, com prazo);
  *  - cada decisão mutável ou denegada é auditada (append-only).
  */
-import { randomBytes } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { TavilyKeyManager } from '../key-manager.js'
 import { classifyStatus, maskKey, parseRetryAfterSeconds, TAVILY_SEARCH_ENDPOINT } from '../search-executor.js'
 import type { LoggerLike, ResolvedConfig } from '../types.js'
 import type { AuthFailureTracker, NonceStore } from './auth.js'
 import { verifyToken } from './auth.js'
-import { renderPage } from './page.js'
 import type { AuditEntry, StorePaths } from './store.js'
 import { savePersistedKeys } from './store.js'
 
@@ -412,19 +410,21 @@ export function createAdminRouter(deps: AdminRouterDeps) {
     const method = req.method ?? 'GET'
     const remote = remoteOf(req)
 
-    // Página (sem segredos): só precisa de passar a fronteira.
+    // Estado público mínimo (sem segredos) para a UI decidir a visibilidade do
+    // botão de configuração: revela se existe algo configurado, nunca o quê.
+    if (method === 'GET' && pathname === '/api/health') {
+      const usable = keyManager.snapshot().filter((k) => k.status !== 'REVOKED').length
+      sendJson(res, 200, { hasValidKey: usable > 0, totalKeys: keyManager.size, needsSetup: usable === 0 })
+      return
+    }
+
+    // A página autónoma foi retirada: toda a gestão de chaves é feita em
+    // Definições → Tavily Keys, dentro do layout do DSH.
     if (method === 'GET' && (pathname === '/' || pathname === '')) {
-      const nonce = randomBytes(16).toString('hex')
-      const html = renderPage({ scriptNonce: nonce, basePath: ADMIN_BASE_PATH })
-      res.writeHead(200, {
-        'content-type': 'text/html; charset=utf-8',
-        'cache-control': 'no-store',
-        'x-content-type-options': 'nosniff',
-        'content-security-policy':
-          `default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}'; ` +
-          `connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+      sendJson(res, 410, {
+        error: 'gone',
+        message: 'A gestão de chaves vive em Definições → Tavily Keys, dentro do DSH.',
       })
-      res.end(html)
       return
     }
 

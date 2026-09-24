@@ -35,6 +35,7 @@ export interface StorePaths {
   stateFile: string
   keysFile: string
   auditFile: string
+  tokenFile: string
 }
 
 export interface AuditEntry {
@@ -54,6 +55,7 @@ export function resolveStorePaths(override?: string | null): StorePaths {
     stateFile: join(dir, 'state.json'),
     keysFile: join(dir, 'keys.json'),
     auditFile: join(dir, 'audit.log'),
+    tokenFile: join(dir, 'admin-token.txt'),
   }
 }
 
@@ -94,6 +96,18 @@ export function loadTokenDigest(paths: StorePaths): string | null {
 
 export function saveTokenDigest(paths: StorePaths, digest: string): void {
   writeJsonAtomic(paths.stateFile, { version: 1, adminTokenSha256: digest })
+}
+
+/**
+ * Recuperação do token administrativo: cópia em claro em `admin-token.txt`
+ * (0600) — a mesma classe de segredo de `~/.npmrc`. Desvio DOCUMENTADO face à
+ * regra "só digest": sem caminho de recuperação local, um token impresso uma
+ * única vez torna o painel inutilizável para quem não capturou o log — UX pior
+ * que o risco num plano de controlo de loopback com credencial+fronteira.
+ * `admin.storeTokenFile: false` desliga este ficheiro.
+ */
+export function saveTokenFile(paths: StorePaths, token: string): void {
+  writeFileSync(paths.tokenFile, `${token}\n`, { mode: FILE_MODE })
 }
 
 export function loadPersistedKeys(paths: StorePaths): string[] {

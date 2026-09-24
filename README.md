@@ -52,24 +52,27 @@ legítimo documentado: "ainda não configurado".
 
 ## Gestão de chaves via interface
 
-O CRUD do pool vive em **dois sítios do layout do DSH**:
+Todo o CRUD do pool vive num **único sítio**: a secção **“Tavily Keys”** em
+**Definições (Settings)** — contribuída para o slot `settings.section` pelo
+bundle de cliente (`client/client.js`, formato `__ModuleLoader__` medido no
+exemplo oficial), estilizada com o design system do DSH.
 
-1. **Nativo, no layout**: secção **“Tavily Keys”** em **Definições (Settings)** —
-   contribuída para o slot `settings.section` pelo bundle de cliente
-   (`client/client.js`, formato `__ModuleLoader__` medido no exemplo oficial).
-   CRUD completo: **adicionar** (C), **listar** com estados (R), **editar/
-   substituir** (U) e **remover** (D), mais **Testar** (valida contra a API —
-   gasta 1 crédito). Estilizado com as variáveis de design `--dsw-alias-*` do
-   próprio DSH — fala o layout da casa.
-2. **Página autónoma** em `http://127.0.0.1:<porta-do-dsh>/__tavily-keys/`
-   (atalho 🔑 injetado na shell via `tapIndex`) — o mesmo CRUD, robusta a
-   reestruturações do host.
+- **CRUD completo** num só ecrã: **adicionar** (C, com `Enter`), **listar** com
+  estados em cartões (R), **editar/substituir** (U, `Enter` guarda, `Esc`
+  cancela), **remover** (D) e **Testar** (valida contra a API — 1 crédito).
+- **Feedback em cada ação**: spinner durante o pedido e confirmação `✓`/`⚠`
+  imediata — nada de cliques sem resposta.
+- **Botão “🔑 Tavily Keys”** na área lateral **só quando não existe chave
+  válida** (desaparece assim que há credencial utilizável); abre diretamente as
+  Definições. Não há ecrã paralelo: a antiga página autónoma responde `410`.
+- **Links úteis no painel**: `app.tavily.com` para obter chaves, documentação e
+  onde está o token.
 
-Ambas exigem o **token administrativo** (guardado só nessa aba:
-`sessionStorage`): gerado por CSPRNG no primeiro arranque e impresso **uma
-única vez** no registo do DSH (`logger 'tavily-pool'`); depois só o digest fica
-em `state.json` (0600). Perdeu? Recarregue com `DSH_TAVILY_ADMIN_RESET=1`.
-Também pode definir `DSH_TAVILY_ADMIN_TOKEN`.
+**Token administrativo** (para abrir o painel): gerado por CSPRNG no primeiro
+arranque, guardado em `~/.dsh/dsh-tavily-resilient-search/admin-token.txt`
+(0600) e impresso uma vez no registo do DSH (`logger 'tavily-pool'`). Perdeu?
+Recarregue com `DSH_TAVILY_ADMIN_RESET=1`. Também pode definir
+`DSH_TAVILY_ADMIN_TOKEN`.
 - **Fronteira**: origem (socket + `Origin`) → `Host` → credencial, por esta
   ordem fixa; denegações byte-idênticas (sem oráculo). Predefinição: só
   loopback (`admin.trustedRemotes` / `admin.allowedHosts`).
