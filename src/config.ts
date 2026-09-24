@@ -7,8 +7,10 @@
  * default DOCUMENTADO; a conjugação proibida é irrecuperável de propósito.
  */
 import type {
+  AdminConfig,
   ApprovalProfile,
   PluginConfig,
+  ResolvedAdminConfig,
   ResolvedConfig,
   SandboxProfile,
   SearchDepth,
@@ -27,6 +29,11 @@ export const DEFAULT_CALL_TIMEOUT_MS = 120_000
 
 const MIN_TIMEOUT_MS = 250
 const MAX_TIMEOUT_MS = 300_000
+
+/** Origens de soquete admitidas por omissão no painel (loopback). */
+export const DEFAULT_TRUSTED_REMOTES: readonly string[] = ['127.0.0.1', '::1', '::ffff:127.0.0.1']
+/** Nomes de Host admitidos por omissão no painel (defesa contra DNS rebinding). */
+export const DEFAULT_ALLOWED_HOSTS: readonly string[] = ['127.0.0.1', 'localhost', '::1']
 
 const PREFIX = '[dsh-tavily-resilient-search]'
 
@@ -88,6 +95,50 @@ function normalizeApiKeys(value: unknown): string[] {
   return keys
 }
 
+function assertStringList(value: unknown, field: string): string[] {
+  if (!Array.isArray(value) || value.length === 0) fail(`'${field}' deve ser um array não vazio de strings`)
+  const out: string[] = []
+  for (const entry of value) {
+    if (typeof entry !== 'string' || entry.trim().length === 0) {
+      fail(`'${field}' deve conter apenas strings não vazias`)
+    }
+    out.push(entry.trim())
+  }
+  return out
+}
+
+function assertAdminConfig(value: unknown): ResolvedAdminConfig {
+  if (value === undefined || value === null) {
+    return {
+      enabled: true,
+      trustedRemotes: [...DEFAULT_TRUSTED_REMOTES],
+      allowedHosts: [...DEFAULT_ALLOWED_HOSTS],
+      stateDir: null,
+      allowPublicBind: false,
+    }
+  }
+  if (typeof value !== 'object') fail(`'admin' deve ser um objeto`)
+  const admin = value as AdminConfig
+  if (admin.enabled !== undefined && typeof admin.enabled !== 'boolean') {
+    fail(`'admin.enabled' deve ser booleano`)
+  }
+  if (admin.allowPublicBind !== undefined && typeof admin.allowPublicBind !== 'boolean') {
+    fail(`'admin.allowPublicBind' deve ser booleano`)
+  }
+  if (admin.stateDir !== undefined && (typeof admin.stateDir !== 'string' || admin.stateDir.trim().length === 0)) {
+    fail(`'admin.stateDir' deve ser uma string não vazia`)
+  }
+  return {
+    enabled: admin.enabled ?? true,
+    trustedRemotes:
+      admin.trustedRemotes === undefined ? [...DEFAULT_TRUSTED_REMOTES] : assertStringList(admin.trustedRemotes, 'admin.trustedRemotes'),
+    allowedHosts:
+      admin.allowedHosts === undefined ? [...DEFAULT_ALLOWED_HOSTS] : assertStringList(admin.allowedHosts, 'admin.allowedHosts'),
+    stateDir: admin.stateDir?.trim() ?? null,
+    allowPublicBind: admin.allowPublicBind ?? false,
+  }
+}
+
 /**
  * Valida e materializa a configuração. Lança em configuração inválida ou no
  * perfil proibido `danger-full-access + never`.
@@ -144,6 +195,7 @@ export function assertValidConfig(config: PluginConfig | undefined): ResolvedCon
     timeoutMs,
     callTimeoutMs,
     projectId,
+    admin: assertAdminConfig(config.admin),
     securityProfile,
   }
 }

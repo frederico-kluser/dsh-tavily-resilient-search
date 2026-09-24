@@ -73,7 +73,39 @@ A segurança real é defesa em profundidade — perfil de execução prudente
 (`workspace-write` + `ask`), redação de segredos, tetos de contexto, e revisão
 humana das ações destrutivas.
 
-## 5. Suíte adversarial
+## 6. Superfície do painel de gestão (`/__tavily-keys`)
+
+O painel é um plano de controlo (adiciona/remove credenciais) e recebe a
+baseline completa:
+
+| Controlo | Implementação | Teste |
+| --- | --- | --- |
+| Ordem fixa origem → `Host` → credencial | `checkBoundary` + `authenticate` (nunca invertida) | B-1/B-2 |
+| Denegações byte-idênticas (sem oráculo de eixo) | corpos constantes `FORBIDDEN_BODY`/`UNAUTHORIZED_BODY` | B-1/B-2/B-3 |
+| Credencial CSPRNG 256 bits, só digest em estado | `generateAdminToken` + `state.json` 0600 | unit + B-5 |
+| Comparação em tempo constante | `timingSafeEqual` sobre sha256 (32 bytes fixos) | unit |
+| Teto de falhas NIST SP 800-63B-4 (100) | `AuthFailureTracker`; lockout responde o MESMO 401 | B-3 |
+| Nonce de confirmação (confused deputy/replay) | `NonceStore`: uso único, TTL 120 s, ligado a ação/alvo/origem | B-4 |
+| Auditoria apensível | `audit.log` 0600, `O_NOFOLLOW`, modo verificado no descritor | unit |
+| CSRF | sem cookies (bearer em `sessionStorage`); `Origin` verificado; CSP estrita com nonce de script | B-1 |
+| DNS rebinding | allowlist de `Host` (`admin.allowedHosts`) | B-2 |
+| Bind público | recusa fail-closed e ruidosa sem `allowPublicBind` | B-6 |
+| Segredos na saída | referências mascaradas (`…últimos4`); canário por valor | B-5 |
+
+**Escolha documentada — sem cookies.** A baseline geral recomenda cookies
+assinados `__Host-` para sessões; aqui a credencial viaja em
+`Authorization: Bearer` a partir de `sessionStorage`, o que torna o CSRF
+estruturalmente impossível (um pedido cross-origin com cabeçalho personalizado
+dispara preflight, sem CORS aprovado). As regras de cookies não se aplicam
+porque não há cookies.
+
+**Deliberação sobre bind não-loopback.** A baseline diz "recusar arrancar" com
+bind `0.0.0.0`; como este plugin não cria socket próprio (herda o `webServer`
+do host), a recusa aplicada é a **montagem do painel** (fail-closed, com erro
+ruidoso) em vez de rebentar o boot do DSH para toda a gente. A ferramenta de
+pesquisa nunca depende disto.
+
+## 7. Suíte adversarial
 
 `test/adversarial/security.test.ts` tenta ativamente brechar as defesas:
 
@@ -85,5 +117,10 @@ humana das ações destrutivas.
 | A-4 | perfil YOLO → *throw* no load, zero registos |
 | A-5 | guarda de regressão P-09: `inject` nunca contém `logger` |
 | A-6 | boot-safety: sem chaves degrada (não rebenta); config inválida falha alto |
+
+Além destes, `test/adversarial/admin-security.test.ts` ataca o painel (B-1..B7:
+CSRF/rebinding com denegações byte-idênticas, força bruta sem oráculo, nonce de
+confirmação, canário de segredos em respostas e auditoria, recusa de bind
+público, chrome `tapIndex` idempotente).
 
 A suíte adversarial é a **prova** de segurança; a cobertura de linhas não é.

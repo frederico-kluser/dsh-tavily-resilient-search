@@ -23,12 +23,14 @@ const CANARY_B = 'tvly-CANARY-BBBB-77a0c1f4de'
 interface FakeHarness {
   ctx: Context
   registered: ToolDefinition[]
+  nested: Array<{ name?: string; inject?: string[]; apply: (c: Context) => void }>
   logLines: string[]
   effectDisposers: Array<() => void>
 }
 
 function fakeHarness(): FakeHarness {
   const registered: ToolDefinition[] = []
+  const nested: Array<{ name?: string; inject?: string[]; apply: (c: Context) => void }> = []
   const logLines: string[] = []
   const effectDisposers: Array<() => void> = []
   const logger = {
@@ -48,19 +50,26 @@ function fakeHarness(): FakeHarness {
         }
       },
     },
+    plugin: (spec: { name?: string; inject?: string[]; apply: (c: Context) => void }) => {
+      nested.push(spec)
+      return { dispose: async () => {} }
+    },
     effect: <T extends () => unknown>(factory: T) => {
       const disposer = factory()
       if (typeof disposer === 'function') effectDisposers.push(disposer as () => void)
       return disposer
     },
   } as unknown as Context
-  return { ctx, registered, logLines, effectDisposers }
+  return { ctx, registered, nested, logLines, effectDisposers }
 }
 
 function config(overrides: Partial<PluginConfig> = {}): PluginConfig {
   return {
     securityProfile: { sandbox: 'workspace-write', approval: 'ask' },
     apiKeys: [CANARY_A, CANARY_B],
+    // os testes da ferramenta de pesquisa não arrancam o painel (evita efeitos
+    // de disco); a ligação do painel é testada à parte em admin-security.test.ts
+    admin: { enabled: false },
     ...overrides,
   }
 }

@@ -15,6 +15,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import { installAdminPanel } from './admin/index.js'
 import { assertValidConfig } from './config.js'
 import { TavilyKeyManager } from './key-manager.js'
 import { createSearchExecutor } from './search-executor.js'
@@ -214,4 +215,17 @@ export function apply(ctx: Context, config: PluginConfig): void {
       }),
     ),
   )
+
+  // d) painel de gestão de chaves VIA INTERFACE (L1 rotas + L3 tapIndex). O seat
+  //    `webServer` é opcional: instalado como plugin ANINHADO (inject:
+  //    ['webServer']) para que o modo headless continue a registar a ferramenta.
+  if (resolved.admin.enabled) {
+    installAdminPanel(ctx, {
+      keyManager,
+      config: resolved,
+      fetchFn: (input, init) => globalThis.fetch(input, init),
+      logger,
+      now: () => Date.now(),
+    })
+  }
 }

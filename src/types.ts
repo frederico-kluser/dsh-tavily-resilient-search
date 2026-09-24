@@ -75,6 +75,29 @@ export interface SecurityProfile {
   approval: ApprovalProfile
 }
 
+/** Configuração do painel de gestão de chaves servido no webServer do DSH. */
+export interface AdminConfig {
+  /** Predefinição: true. Sem webServer (headless) o painel simplesmente não sobe. */
+  enabled?: boolean
+  /** Origens de soquete admitidas (trustedRemotes). Predefinição: loopback. */
+  trustedRemotes?: string[]
+  /** Nomes de Host admitidos (defesa contra DNS rebinding). Predefinição: loopback. */
+  allowedHosts?: string[]
+  /** Diretório de estado (0700) — predefinição: $DSH_HOME/dsh-tavily-resilient-search. */
+  stateDir?: string
+  /** Opt-out explícito da recusa de bind não-loopback (fail-closed por omissão). */
+  allowPublicBind?: boolean
+}
+
+/** AdminConfig totalmente materializada. */
+export interface ResolvedAdminConfig {
+  enabled: boolean
+  trustedRemotes: string[]
+  allowedHosts: string[]
+  stateDir: string | null
+  allowPublicBind: boolean
+}
+
 /** Configuração declarativa do plugin (camadas Bundle < Profile < Home < CLI overlay). */
 export interface PluginConfig {
   /** Agrupamento de credenciais Tavily. Ausente/vazio = modo keyless-only (legítimo, documentado). */
@@ -88,6 +111,8 @@ export interface PluginConfig {
   callTimeoutMs?: number
   /** Segregação por projeto (cabeçalho X-Project-ID). */
   projectId?: string
+  /** Painel de gestão de chaves via interface (predefinição: ativo, restrito a loopback). */
+  admin?: AdminConfig
   /** Atestação do perfil de segurança — obrigatória. */
   securityProfile: SecurityProfile
 }
@@ -101,6 +126,7 @@ export interface ResolvedConfig {
   timeoutMs: number
   callTimeoutMs: number
   projectId: string | null
+  admin: ResolvedAdminConfig
   securityProfile: SecurityProfile
 }
 

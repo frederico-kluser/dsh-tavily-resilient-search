@@ -50,6 +50,10 @@ const blockContent = (lines) => {
   const e = findLine(lines, /^export type ContentBlock = ContentBlockMap\[ContentBlockType\];$/, s)
   return lines.slice(s, e + 1)
 }
+const blockCordisAugGeneric = (lines) => {
+  const s = findLine(lines, /^declare module '@deepseek-ai\/cordis' \{/)
+  return [...lines.slice(s, s + 3), '    }']
+}
 
 const PLAN = {
   'dsh-tools-schema.d.ts': {
@@ -84,6 +88,17 @@ const PLAN = {
     pkg: '@deepseek-ai/dsh-llm',
     inner: 'lib/types/types.d.ts',
     blocks: (l) => [['ContentBlock-surface', blockContent(l)]],
+  },
+  'dsh-host-webserver.d.ts': {
+    pkg: '@deepseek-ai/dsh-host-webserver',
+    inner: 'lib/types/index.d.ts',
+    blocks: (l) => [
+      ['WebRouteKind', blockSingle(l, /^export type WebRouteKind/)],
+      ['WebRoute', blockIface(l, /^export interface WebRoute \{/)],
+      ['Config-bind', blockIface(l, /^export interface Config \{/)],
+      ['WebServer-class-surface', blockIface(l, /^export declare class WebServer extends Service \{/)],
+      ['Context-augmentation-webServer', blockCordisAugGeneric(l)],
+    ],
   },
 }
 

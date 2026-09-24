@@ -50,6 +50,39 @@ Sem nenhuma chave o plugin **não rebenta o boot**: degrada para o modo
 *keyless-only* (limites muito mais severos) e avisa em voz alta. Estado
 legítimo documentado: "ainda não configurado".
 
+## Gestão de chaves via interface
+
+Para além das variáveis de ambiente, o plugin serve um **painel de gestão do
+pool** no próprio webServer do DSH:
+
+```
+http://127.0.0.1:<porta-do-dsh>/__tavily-keys/
+```
+
+(um atalho 🔑 *Tavily Keys* é injetado na shell SPA via `tapIndex`). O painel
+permite **adicionar** chaves (opcionalmente persistidas em `keys.json` 0600),
+**remover** (com nonce de confirmação), **testar** uma chave (envia uma pesquisa
+real — gasta 1 crédito) e ver o estado do pool em tempo real.
+
+- **Autenticação**: token administrativo gerado por CSPRNG no primeiro arranque e
+  mostrado **uma única vez** no registo do DSH (`logger 'tavily-pool'`); depois
+  só o digest fica em `state.json` (0600). Perdeu? Recarregue com
+  `DSH_TAVILY_ADMIN_RESET=1`. Também pode definir `DSH_TAVILY_ADMIN_TOKEN`.
+- **Fronteira**: origem (socket + `Origin`) → `Host` → credencial, por esta
+  ordem fixa; denegações byte-idênticas (sem oráculo). Predefinição: só
+  loopback (`admin.trustedRemotes` / `admin.allowedHosts`).
+- **Força bruta**: orçamento NIST SP 800-63B-4 (100 falhas → lockout com o
+  mesmo 401).
+- **Ações destrutivas** (remoção) exigem nonce de confirmação, de uso único.
+- **Auditoria**: `audit.log` apensível (0600, `O_NOFOLLOW`) com todas as
+  decisões mutáveis e denegações.
+- Chaves removidas que vêm do **ambiente** regressam no próximo arranque (a
+  remoção é volátil e o painel avisa); chaves persistidas/removidas pelo painel
+  são definitivas.
+- Sobre um bind público (`0.0.0.0`) o painel **recusa-se a subir** (fail-closed,
+  ruidoso) até `admin.allowPublicBind: true` — a ferramenta de pesquisa continua
+  a funcionar em qualquer caso.
+
 ## Configuração
 
 Sobreponha qualquer campo na camada **Profile**
@@ -67,6 +100,11 @@ aponte sempre ao id do próprio plugin.
 | `timeoutMs` | `250..300000` | `15000` | Timeout **por tentativa** HTTP. |
 | `callTimeoutMs` | `≥ timeoutMs` | `120000` | Orçamento cooperativo total da chamada (todas as rotações). |
 | `projectId` | `string` | — | Segregação por projeto (`X-Project-ID`). |
+| `admin.enabled` | `boolean` | `true` | Painel de gestão de chaves via interface. |
+| `admin.trustedRemotes` | `string[]` | loopback | Origens de soquete admitidas no painel. |
+| `admin.allowedHosts` | `string[]` | `127.0.0.1`, `localhost`, `::1` | Nomes de `Host` admitidos (anti DNS-rebinding). |
+| `admin.stateDir` | `string` | `$DSH_HOME/dsh-tavily-resilient-search` | Diretório de estado (0700). |
+| `admin.allowPublicBind` | `boolean` | `false` | Opt-out explícito da recusa de bind não-loopback. |
 | `securityProfile` | `{sandbox, approval}` | **obrigatório** | Atestação do perfil de instalação (ver [Segurança](#segurança)). |
 
 Exemplo (camada Bundle, já incluído no pacote):
@@ -197,9 +235,9 @@ injetados, sem sleeps):
 
 | Camada | Prova |
 | --- | --- |
-| `test/unit` | núcleo puro: máquina de estados, teto de bytes, validação fail-loud |
-| `test/integration` | rotação atómica sobre um double de transporte com contrato |
-| `test/adversarial` | tenta brechar: canário de segredos, documento-bomba, injeção indireta, perfil YOLO, regressão P-09, boot-safety |
+| `test/unit` | núcleo puro: máquina de estados, teto de bytes, validação fail-loud, token/nonce/lockout, persistência 0600 + auditoria à prova de symlink |
+| `test/integration` | rotação atómica sobre um double de transporte e o router do painel sobre servidor HTTP real (porta 0) |
+| `test/adversarial` | tenta brechar: canário de segredos, documento-bomba, injeção indireta, perfil YOLO, regressão P-09, boot-safety, CSRF/rebinding byte-idêntico, força bruta sem oráculo, nonce, recusa de bind público |
 | `test/contract` | os espelhos `types/` correspondem verbatim aos `.d.ts` publicados |
 
 ## Empacotamento e publicação

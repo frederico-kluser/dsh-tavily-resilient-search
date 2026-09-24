@@ -4,6 +4,45 @@ Todas as alterações notáveis deste projeto. Formato inspirado em
 [Keep a Changelog](https://keepachangelog.com/pt-PT/1.1.0/); versionado segundo
 [SemVer](https://semver.org/lang/pt-PT/) — em `0.x`, um **minor** é breaking.
 
+## [0.1.1] — 2026-09-24
+
+### Adicionado
+
+- **Gestão de chaves VIA INTERFACE**: painel autossuficiente em
+  `http://127.0.0.1:<porta-do-dsh>/__tavily-keys/` (L1: rotas próprias no
+  `ctx.webServer` + L3: chrome `tapIndex` com atalho 🔑 na shell SPA). Faz
+  **adicionar**, **remover**, **testar** (1 crédito) e observar o estado do pool
+  (`ACTIVE`, `RATE_LIMITED`, `QUOTA_EXHAUSTED`, `REVOKED`) com referências
+  mascaradas.
+- Gestão do pool em tempo de execução: `TavilyKeyManager.addKey`,
+  `removeKeyByIndex`, `getByIndex` e `snapshot()` mascarado (nunca material de
+  segredo) + proveniência por chave (`env`/`store`/`ui`).
+- Persistência em `$DSH_HOME/dsh-tavily-resilient-search/` (0700): `keys.json`
+  (0600) para chaves adicionadas pelo painel e `state.json` (0600) com APENAS o
+  digest do token administrativo.
+- Baseline de segurança do painel (docs/seguranca.md §6):
+  - ordem fixa de verificação **origem (socket + `Origin`) → `Host` →
+    credencial**, com denegações 403 byte-idênticas entre si e 401
+    byte-idênticos entre si (sem oráculo);
+  - token administrativo CSPRNG (256 bits), impresso uma única vez, comparado
+    por `timingSafeEqual` sobre digests sha256;
+  - orçamento de falhas NIST SP 800-63B-4 (100 falhas → lockout com o MESMO
+    401, nunca 429; sucesso reinicia o orçamento);
+  - nonce de confirmação para remoções (uso único, com prazo, ligado a
+    ação/alvo/origem) contra confused deputy/replay;
+  - auditoria apensível (`audit.log` 0600, `O_NOFOLLOW`, modo verificado no
+    descritor) de todas as decisões mutáveis e denegações;
+  - CSP estrita por resposta com nonce de script; sem cookies (bearer em
+    `sessionStorage`) — CSRF estruturalmente neutralizado;
+  - **fail-closed** sobre bind não-loopback: o painel não sobe (ruidosamente)
+    sem `admin.allowPublicBind: true`; a ferramenta de pesquisa continua.
+- Seat `webServer` OPCIONAL via plugin aninhado (`inject: ['webServer']`): o modo
+  headless continua a registar `web_search`.
+- Espelho de tipos `types/dsh-host-webserver.d.ts` (+ contract test e
+  reverificação de rede) para a superfície `register`/`tapIndex`/`WebServer.host`.
+- Variáveis `DSH_TAVILY_ADMIN_TOKEN` (traz a própria credencial) e
+  `DSH_TAVILY_ADMIN_RESET=1` (regenera e mostra uma única vez).
+
 ## [0.1.0] — 2026-09-24
 
 ### Adicionado

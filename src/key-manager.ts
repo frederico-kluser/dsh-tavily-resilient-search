@@ -15,12 +15,30 @@
 
 export type KeyStatus = 'ACTIVE' | 'RATE_LIMITED' | 'QUOTA_EXHAUSTED' | 'REVOKED'
 
+/** Proveniência da credencial (ambiente, estado persistido ou painel). */
+export type KeySource = 'env' | 'store' | 'ui'
+
 export interface KeyMetadata {
   key: string
   status: KeyStatus
   cooldownUntil: number
   failureCount: number
   totalRequests: number
+  source: KeySource
+}
+
+/**
+ * Vista mascarada para observabilidade/painel: NUNCA carrega material de
+ * segredo — identifica a credencial apenas pelos últimos 4 caracteres.
+ */
+export interface KeySnapshot {
+  index: number
+  ref: string
+  status: KeyStatus
+  cooldownRemainingMs: number
+  failureCount: number
+  totalRequests: number
+  source: KeySource
 }
 
 export interface KeyManagerOptions {
@@ -30,6 +48,8 @@ export interface KeyManagerOptions {
   random?: () => number
   /** Arranque com pool vazio (modo keyless-only documentado). Por omissão, falha alto. */
   allowEmpty?: boolean
+  /** Proveniência atribuída às chaves passadas ao construtor. */
+  source?: KeySource
 }
 
 /** $T_0$ — patamar basal de arrefecimento exponencial (ms). */
@@ -38,6 +58,11 @@ export const COOLDOWN_BASE_MS = 500
 export const COOLDOWN_MAX_MS = 60_000
 /** Amplitude máxima do jitter $\delta$ (ms). */
 export const COOLDOWN_JITTER_MS = 500
+
+/** Máscara de identificação: apenas os últimos 4 caracteres (prefixo é segredo). */
+function maskSuffix(key: string): string {
+  return `…${key.length <= 4 ? '····' : key.slice(-4)}`
+}
 
 export class TavilyKeyManager {
   private keys: KeyMetadata[]
@@ -59,6 +84,7 @@ export class TavilyKeyManager {
       cooldownUntil: 0,
       failureCount: 0,
       totalRequests: 0,
+      source: options.source ?? 'env',
     }))
   }
 
@@ -149,6 +175,50 @@ export class TavilyKeyManager {
   /** Estado atual de uma credencial (observabilidade e testes). */
   public getStatus(key: string): KeyStatus | undefined {
     return this.keys.find((k) => k.key === key)?.status
+  }
+
+  /**
+   * Acrescenta uma credencial ao pool (gestão em tempo de execução via painel).
+   * Devolve `false` para duplicados — duplicados não dobram a capacidade.
+   */
+  public addKey(key: string, source: KeySource = 'ui'): boolean {
+    const trimmed = key.trim()
+    if (trimmed.length === 0) return false
+    if (this.keys.some((k) => k.key === trimmed)) return false
+    this.keys.push({
+      key: trimmed,
+      status: 'ACTIVE',
+      cooldownUntil: 0,
+      failureCount: 0,
+      totalRequests: 0,
+      source,
+    })
+    return true
+  }
+
+  /** Remove a credencial do índice dado (gestão via painel). */
+  public removeKeyByIndex(index: number): KeyMetadata | undefined {
+    if (!Number.isInteger(index) || index < 0 || index >= this.keys.length) return undefined
+    return this.keys.splice(index, 1)[0]
+  }
+
+  /** Acesso por índice (estável dentro da sessão). */
+  public getByIndex(index: number): KeyMetadata | undefined {
+    return this.keys[index]
+  }
+
+  /** Vista MASCARADA do pool (painel/observabilidade) — nunca material de segredo. */
+  public snapshot(): KeySnapshot[] {
+    const now = this.now()
+    return this.keys.map((k, index) => ({
+      index,
+      ref: maskSuffix(k.key),
+      status: k.status,
+      cooldownRemainingMs: Math.max(0, k.cooldownUntil - now),
+      failureCount: k.failureCount,
+      totalRequests: k.totalRequests,
+      source: k.source,
+    }))
   }
 
   /**
