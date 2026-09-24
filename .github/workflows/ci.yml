@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: lint
+        run: pnpm run lint
+      - name: typecheck
+        run: pnpm run typecheck
+      - name: build
+        run: pnpm run build
+      - name: test (unit + integration + adversarial + contract)
+        run: pnpm run test
+      - name: package checks
+        run: |
+          pnpm run check:tarball
+          pnpm exec publint
+          pnpm exec attw --pack .

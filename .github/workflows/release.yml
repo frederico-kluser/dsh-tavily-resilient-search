@@ -1,0 +1,43 @@
+name: Release
+
+# Publica no npm com proveniência OIDC (trusted publishing). Pré-requisito
+# único, no console do npm: associar este repositório como trusted publisher de
+# `dsh-tavily-resilient-search`. Sem isso, o passo de publish falha alto — de
+# propósito (nunca token em secrets).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: gate completo + publint + attw
+        run: |
+          pnpm run gate
+          pnpm exec publint
+          pnpm exec attw --pack .
+      - name: publish (OIDC provenance, idempotente)
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "dsh-tavily-resilient-search@${VERSION}" version >/dev/null 2>&1; then
+            echo "v${VERSION} já publicada no npm — publish ignorado."
+          else
+            pnpm publish --access public --provenance --no-git-checks
+          fi
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file CHANGELOG.md

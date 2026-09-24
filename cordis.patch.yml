@@ -1,0 +1,32 @@
+# camada Bundle (precedência mais baixa) — aplicada automaticamente a quem instala este pacote.
+#
+# Regras medidas em @deepseek-ai/dsh 0.1.x-rc (ver docs/arquitetura.md):
+#  - a resolução é de ENTRADA INTEIRA (whole-entry replace), não deep-merge: use SEMPRE o
+#    próprio id; apontar ao id de outra entrada apaga-a e pode duplicar um service do host;
+#  - a ordem das linhas NÃO carrega semântica de carga — a ativação é dirigida por `inject`;
+#  - este ficheiro NUNCA pode lançar na carga: um !!js que lança impede o boot do DSH para
+#    todos os que instalaram o plugin. A expressão abaixo é defensiva e devolve [] em falha.
+#  - chaves vazias são um estado LEGÍTIMO documentado ("ainda não configurado"): o plugin
+#    arranca em modo keyless-only e avisa, em vez de rebentar o boot.
+#
+# `!!js` é a diretiva de compilação de @deepseek-ai/cordis-plugin-include (presente como
+# dependência de @deepseek-ai/dsh). As chaves entram por variáveis de ambiente — nunca em
+# texto simples neste manifesto.
+- insert:
+    - id: dsh-tavily-resilient-search
+      name: 'dsh-tavily-resilient-search'
+      config:
+        searchDepth: 'basic'
+        maxResults: 5
+        includeAnswer: true
+        timeoutMs: 15000
+        callTimeoutMs: 120000
+        # Atestação FAIL-LOUD do perfil de segurança da instalação (obrigatória).
+        # A conjugação sandbox: danger-full-access + approval: never é RECUSADA no load.
+        securityProfile:
+          sandbox: 'workspace-write'
+          approval: 'ask'
+        # Agrupamento de credenciais Tavily (TAVILY_API_KEY_A..D). Acrescente mais entradas
+        # ao array se tiver mais contas; entradas vazias/ausentes são filtradas.
+        apiKeys: !!js >
+          (() => { try { return [process.env.TAVILY_API_KEY_A, process.env.TAVILY_API_KEY_B, process.env.TAVILY_API_KEY_C, process.env.TAVILY_API_KEY_D].filter(Boolean) } catch { return [] } })()

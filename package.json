@@ -1,0 +1,86 @@
+{
+  "name": "dsh-tavily-resilient-search",
+  "version": "0.1.0",
+  "description": "Pesquisa web em tempo real para o DeepSeek Harness via API Tavily, com rotação atómica e resiliente de um agrupamento de chaves (rate limit 429, cota mensal 432/433, revogação 401) e contingência keyless — sem nunca interromper o agent loop.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.7.0",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/frederico-kluser/dsh-tavily-resilient-search.git"
+  },
+  "homepage": "https://github.com/frederico-kluser/dsh-tavily-resilient-search#readme",
+  "bugs": {
+    "url": "https://github.com/frederico-kluser/dsh-tavily-resilient-search/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "cordis",
+    "deepseek-harness",
+    "tavily",
+    "web-search",
+    "key-rotation"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "node --import tsx/esm --test test/unit/*.test.ts test/integration/*.test.ts test/adversarial/*.test.ts test/contract/*.test.ts",
+    "check:tarball": "node scripts/check-tarball.mjs",
+    "check:upstream": "node scripts/verify-upstream.mjs",
+    "gate": "pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test && pnpm run check:tarball",
+    "prepublishOnly": "pnpm run gate && publint && attw --pack ."
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-tools": "^0.1.1-rc.1 || ^0.1.7-rc.1"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@changesets/cli": "^3.0.3",
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-agent": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-invariants": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-llm": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-ptc-runtime": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-sandbox": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-sandbox-policy": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-scope": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-session": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-tools": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-user-approval": "0.1.7-rc.1",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.2",
+    "eslint": "^10.11.0",
+    "publint": "^0.3.24",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1"
+  }
+}
